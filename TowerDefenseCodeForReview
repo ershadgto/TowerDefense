@@ -1,0 +1,175 @@
+from tkinter import *
+import random
+from helper import*
+
+prochain_id = 0
+
+def get_prochain_id():
+  global prochain_id #preciser a linterieur dun autre bloc
+  prochain_id += 1
+  return "id_" + str(prochain_id)
+
+class Vue():
+ def __init__(self,parent):
+     self.parent = parent
+     self.root = Tk()
+     print(self.root)
+     taille = self.parent.modele.taille
+     print(taille)
+     self.canevas = Canvas(self.root, width= taille, height=taille, bg="red")
+     self.canevas.pack()
+     self.canevas.bind("<Button-1>",self.deplacer_creep)
+     self.canevas.bind("<Button-3>", self.deplacer_tour)
+     self.canevas.tag_bind("creep", "<Button>",self.clic_creep)
+     self.afficher_jeu(self.parent.modele)
+ def clic_creep(self,evt):
+     mes_tags = self.canevas.gettags("current")
+     if mes_tags[0] == "creep":
+         self.parent.cibler_creep(mes_tags[1])
+         print(mes_tags)
+
+ def afficher_jeu(self, partie):
+     self.canevas.delete("creep")
+     self.canevas.delete("tour")
+     self.canevas.delete("obus")
+     j1 = partie.tour
+     ajout = 10
+     self.canevas.create_rectangle(j1.x - ajout, j1.y - ajout, j1.x + ajout, j1.y + ajout, fill = "blue",tags = ("tour", j1.mon_id))
+     ajout = 5
+
+     for i in partie.creeps:
+         self.canevas.create_oval(i.x - ajout, i.y - ajout, i.x + ajout, i.y + ajout, fill="yellow", tags = ("creep", i.mon_id))
+         self.canevas.create_text(i.x , i.y - (ajout+3), text = i.mon_id, fill="yellow", tags = ("creep", i.mon_id))
+
+     for i in partie.tour.obus:
+         self.canevas.create_oval(i.x - ajout, i.y - ajout, i.x + ajout, i.y + ajout, fill="green", tags = ("obus", i.mon_id))
+ def deplacer_tour(self,evt):
+     self.parent.deplacer_tour(evt.x,evt.y)
+ def deplacer_creep(self,evt):
+     self.parent.boucle_de_jeu()
+     self.canevas.unbind("<Button-1>")
+
+
+class Partie():
+ def __init__(self,parent):
+     self.creeps = []
+     self.niveau = 0
+     if len(self.creeps) == 0:
+        self.niveau += 1
+        self.taille = 1000
+        self.tour = None
+        self.parent = parent
+        self.nbr_creep = 5 * self.niveau
+
+     self.initialiser_partie()
+
+
+ def initialiser_partie(self):
+     x = self.taille / 2 # position defaut de la tour
+     y = self.taille / 2 # position defaut de la tour
+     self.tour = Tour(self,x,y)
+     for i in range(self.nbr_creep):
+         x = random.randrange(self.taille)
+         y = random.randrange(self.taille)
+         self.creeps.append(Creep(self,x,y))
+
+ def jouer_coup(self):
+     self.deplacer_creep()
+     self.tour.jouer_coup()
+ def deplacer_creep(self):
+     for i in self.creeps:
+         i.deplacer()
+ def deplacer_tour(self,x,y):
+     self.tour.x = x
+     self.tour.y = y
+
+ def cibler_creep(self,id_creep):
+     creep_vise = None
+     for i in self.creeps:
+         if i.mon_id == id_creep:
+             creep_vise = i
+             break
+
+     self.tour.cibler_creep(creep_vise)
+
+
+class ObjetDeJeu():
+ def __init__(self,parent,x,y):
+     self.parent = parent
+     self.mon_id = get_prochain_id()
+     self.x = x
+     self.y = y
+
+class Tour(ObjetDeJeu):
+ def __init__(self,parent, x, y):
+     ObjetDeJeu.__init__(self, parent, x, y) #on invoque les caracs de objet de jeu
+     self.obus = []
+
+ def jouer_coup(self):
+     mort = []
+     for i in self.obus:
+         rep = i.deplacer()
+         if len(rep) == 2:
+             self.parent.creeps.remove(rep[1])
+             mort.append(i)
+         elif len(rep) == 1:
+             mort.append(i)
+     for i in mort:
+         self.obus.remove(i)
+ def cibler_creep(self,creep_vise):
+     nouvel_obus = Obus(self,creep_vise)
+     self.obus.append(nouvel_obus)
+
+class Obus(ObjetDeJeu):
+   def __init__(self,parent,cible):
+       ObjetDeJeu.__init__(self,parent, parent.x, parent.y)
+       self.vitesse = 50
+       self.distance_frappe = 30
+       self.cible = cible #objet de type creep
+       self.cible_x = cible.x
+       self.cible_y = cible.y
+       self.angle = Helper.calcAngle(self.x,self.y,self.cible_x,self.cible_y)
+
+
+   def deplacer(self):
+       self.x,self.y = Helper.getAngledPoint(self.angle,self.vitesse,self.x,self.y)
+       dist = Helper.calcDistance(self.x,self.y,self.cible.x,self.cible.y)
+       if dist <= self.distance_frappe:
+           return[self,self.cible]
+       arrive = Helper.calcDistance(self.x,self.y,self.cible_x,self.cible_y)
+       if arrive <= self.vitesse:
+           return [self]
+       return []
+
+
+
+class Creep(ObjetDeJeu):
+ def __init__(self,parent, x , y):
+     ObjetDeJeu.__init__(self,parent, x, y) #on invoque les caracs de objet de jeu
+     self.vitesse = random.randrange(1,5)
+
+ def deplacer(self):
+     self.x += self.vitesse
+     if self.x > self.parent.taille + 10:
+         self.x = -10
+
+class Controleur():
+ def __init__(self):
+
+     self.modele = Partie(self) #uniquement le init
+     self.vue = Vue(self) #uniquement le init
+     self.vue.root.mainloop()
+
+ def boucle_de_jeu(self):
+     self.modele.jouer_coup()
+     self.vue.afficher_jeu(self.modele)
+     self.vue.root.after(50,self.boucle_de_jeu)
+
+ def cibler_creep(self,id_creep):
+     self.modele.cibler_creep(id_creep)
+ def deplacer_tour(self,x,y):
+     self.modele.deplacer_tour(x,y)
+
+
+if __name__ == '__main__':
+ c = Controleur()
