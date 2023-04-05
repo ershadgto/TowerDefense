@@ -1,0 +1,22 @@
+    def jouer_coup(self):
+
+
+        for i in self.parent.creeps:
+            distance = Helper.calcDistance(self.x, self.y, i.x, i.y)
+            if distance <= self.portee :
+                mort = []
+
+                for y in self.obus:
+                    rep = y.deplacer()
+                    if len(rep) == 2:
+                        if rep[1] in self.parent.creeps:
+                            self.parent.creeps.remove(rep[1])
+                            mort.append(y)
+                        if len(self.parent.creeps) == 0:
+                            self.parent.nouveau_niveau()
+                            return
+                    elif len(rep) == 1:
+                        mort.append(y)
+                for i in mort:
+                    self.obus.remove(i)
+                break
