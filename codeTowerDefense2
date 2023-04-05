@@ -4,32 +4,50 @@ class Tour(ObjetDeJeu):
     def __init__(self, parent, x, y):
         ObjetDeJeu.__init__(self, parent, x, y)
         self.obus = []
+        self.portee = 300
 
-    def est_dans_portee(self):
-        distance = 0
-        for i in self.parent.creeps:
-            distance = Helper.calcDistance(self.x,self.y,i.x,i.y)
-
-        return distance
 
 
     def jouer_coup(self):
-        mort = []
-        for y in self.obus:
-            rep = y.deplacer()
-            if len(rep) == 2:
-
-                for i in self.parent.creep:
-                    if est_dans_portee():
 
 
-                    if rep[1] in self.parent.creeps:
-                        self.parent.creeps.remove(rep[1])
+        for i in self.parent.creeps:
+            distance = Helper.calcDistance(self.x, self.y, i.x, i.y)
+            if distance <= self.portee:
+                mort = []
+                for y in self.obus:
+                    rep = y.deplacer()
+                    if len(rep) == 2:
+                        if rep[1] in self.parent.creeps:
+                            self.parent.creeps.remove(rep[1])
+                            mort.append(y)
+                        if len(self.parent.creeps) == 0:
+                            self.parent.nouveau_niveau()
+                            return
+                    elif len(rep) == 1:
                         mort.append(y)
-                    if len(self.parent.creeps) == 0:
-                        self.parent.nouveau_niveau()
-                        return
-            elif len(rep) == 1:
-                mort.append(y)
-        for i in mort:
-            self.obus.remove(i)
+                for i in mort:
+                    self.obus.remove(i)
+
+
+
+
+
+
+        #for i in self.obus:
+         #   rep = i.deplacer()
+          #  if len(rep) == 2:
+           #     if rep[1] in self.parent.creeps:
+            #        self.parent.creeps.remove(rep[1])
+             #       mort.append(i)
+              #  if len(self.parent.creeps) == 0:
+               #     self.parent.nouveau_niveau()
+                #    return
+            #elif len(rep) == 1:
+             #   mort.append(i)
+        #for i in mort:
+         #   self.obus.remove(i)
+
+    def cibler_creep(self, creep_visee):
+        nouvelle_obus = Obus(self, creep_visee)
+        self.obus.append(nouvelle_obus)
